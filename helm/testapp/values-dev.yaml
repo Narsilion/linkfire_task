@@ -1,0 +1,9 @@
+containers:
+  - name: superapp
+    resources:
+      requests:
+        memory: "1024Mi"
+        cpu: "250m"
+      limits:
+        memory: "2048Mi"
+        cpu: "500m"

@@ -1,0 +1,53 @@
+name: Build Docker image and deploy to DEV
+run-name: ${{ github.actor }} is building 🚀
+on: push
+env:
+  artifactory_url: https://artifactory.company.net/repo_name
+  aws_region: eu-central-1
+  role_arn: arn::aws:iam::333333333:role/node_iam_role
+  app_name: superapp
+  environment: dev
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up JDK
+      uses: actions/setup-java@v2
+      with:
+        distribution: 'adopt'
+        java-version: '11'
+
+    - name: Build with Maven
+      run: mvn --batch-mode clean install
+
+    - name: Upload JAR artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: superapp
+        path: target/superapp-*.jar
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Execute tests
+        run: some tests
+  Create-docker-image:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: docker build -t $artifactory_url/$app_name/$app_name:${{ github.head_ref }}-${{ github.sha }} .
+      - run: docker push $artifactory_url/$app_name/$app_name:${{ github.head_ref }}-${{ github.sha }}
+  Deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v2
+      - run: aws sts assume-role --role $role_arn --region $aws_region
+      - run: |
+          cd helm/${app_name}
+          helm upgrade --install ${app_name} -n ${app_name} . -f values-${environment}.yml --set image.tag=${{ github.head_ref }}-${{ github.sha }}

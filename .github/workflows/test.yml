@@ -1,0 +1,20 @@
+name: Build Docker image and deploy to TEST
+run-name: Deployment to TEST
+on:
+  push:
+    tags:
+      - 'rc[0-9]+.[0-9]+.[0-9]+'
+env:
+  artifactory_url: https://artifactory.company.net/repo_name
+  aws_region: eu-central-1
+  role_arn: arn::aws:iam::2222222222:role/node_iam_role
+  app_name: superapp
+  environment: test
+jobs:
+  Deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - run: aws sts assume-role --role $role_arn --region $aws_region
+      - run: |
+          cd helm/${app_name}
+          helm upgrade --install ${app_name} -n ${app_name} . -f values-${environment}.yml --set image.tag=${{ github.head_ref }}-${{ github.sha }}
